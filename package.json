@@ -1,34 +1,102 @@
 {
-  "name": "anywhere",
-  "version": "1.5.0",
-  "description": "Run static file server anywhere",
+  "_args": [
+    [
+      {
+        "raw": "https://github.com/iquejay/anywhere.git",
+        "scope": null,
+        "escapedName": null,
+        "name": null,
+        "rawSpec": "https://github.com/iquejay/anywhere.git",
+        "spec": "git+https://github.com/iquejay/anywhere.git",
+        "type": "hosted",
+        "hosted": {
+          "type": "github",
+          "ssh": "git@github.com:iquejay/anywhere.git",
+          "sshUrl": "git+ssh://git@github.com/iquejay/anywhere.git",
+          "httpsUrl": "git+https://github.com/iquejay/anywhere.git",
+          "gitUrl": "git://github.com/iquejay/anywhere.git",
+          "shortcut": "github:iquejay/anywhere",
+          "directUrl": "https://raw.githubusercontent.com/iquejay/anywhere/master/package.json"
+        }
+      },
+      "C:\\Users\\78782"
+    ]
+  ],
+  "_from": "git+https://github.com/iquejay/anywhere.git",
+  "_id": "anywhere@1.5.0",
+  "_inCache": true,
+  "_location": "/anywhere",
+  "_phantomChildren": {},
+  "_requested": {
+    "raw": "https://github.com/iquejay/anywhere.git",
+    "scope": null,
+    "escapedName": null,
+    "name": null,
+    "rawSpec": "https://github.com/iquejay/anywhere.git",
+    "spec": "git+https://github.com/iquejay/anywhere.git",
+    "type": "hosted",
+    "hosted": {
+      "type": "github",
+      "ssh": "git@github.com:iquejay/anywhere.git",
+      "sshUrl": "git+ssh://git@github.com/iquejay/anywhere.git",
+      "httpsUrl": "git+https://github.com/iquejay/anywhere.git",
+      "gitUrl": "git://github.com/iquejay/anywhere.git",
+      "shortcut": "github:iquejay/anywhere",
+      "directUrl": "https://raw.githubusercontent.com/iquejay/anywhere/master/package.json"
+    }
+  },
+  "_requiredBy": [
+    "#USER"
+  ],
+  "_resolved": "git+https://github.com/iquejay/anywhere.git#1b7b86226c947f4a2e1e0300c65a3e7f2b5ad531",
+  "_shasum": "291c3a94c806235d744948d8d227cbfb7d61f890",
+  "_shrinkwrap": null,
+  "_spec": "https://github.com/iquejay/anywhere.git",
+  "_where": "C:\\Users\\78782",
+  "author": {
+    "name": "Jackson Tian"
+  },
   "bin": {
     "anywhere": "./bin/anywhere"
   },
+  "bugs": {
+    "url": "https://github.com/JacksonTian/anywhere/issues"
+  },
+  "dependencies": {
+    "chokidar": "^3.3.1",
+    "connect": "^3.6.6",
+    "connect-history-api-fallback": "^1.2.0",
+    "debug": "^2.2.0",
+    "event-stream": "^4.0.1",
+    "faye-websocket": "^0.11.3",
+    "http-proxy-middleware": "^0.19.1",
+    "minimist": "^1.2.0",
+    "send": "^0.17.1",
+    "serve-index": "^1.9.1",
+    "serve-static": "^1.13.2"
+  },
+  "description": "Run static file server anywhere",
+  "devDependencies": {},
+  "files": [
+    "bin",
+    "keys"
+  ],
+  "gitHead": "1b7b86226c947f4a2e1e0300c65a3e7f2b5ad531",
+  "homepage": "https://github.com/JacksonTian/anywhere",
   "keywords": [
     "Static",
     "file",
     "server",
     "Assets"
   ],
-  "author": "Jackson Tian",
   "license": "MIT",
-  "dependencies": {
-    "connect": "^3.6.6",
-    "connect-history-api-fallback": "^1.2.0",
-    "debug": "^2.2.0",
-    "http-proxy-middleware": "^0.19.1",
-    "minimist": "^1.2.0",
-    "serve-index": "^1.9.1",
-    "serve-static": "^1.13.2"
-  },
+  "name": "anywhere",
+  "optionalDependencies": {},
+  "readme": "Anywhere 随启随用的静态文件服务器\r\n==============================\r\n\r\nRunning static file server anywhere. 随时随地将你的当前目录变成一个静态文件服务器的根目录。\r\n\r\n## Installation\r\n\r\nInstall it as a command line tool via `npm -g`.\r\n\r\n```sh\r\nnpm install anywhere -g\r\n```\r\n\r\n## Execution\r\n\r\n```sh\r\n$ anywhere\r\n// or with port\r\n$ anywhere -p 8000\r\n// or start it but silent(don't open browser)\r\n$ anywhere -s\r\n// or with hostname\r\n$ anywhere -h localhost -p 8888\r\n// or with folder\r\n$ anywhere -d ~/git/anywhere\r\n// or enable html5 history\r\n$ anywhere -f /index.html\r\n```\r\n\r\n## Help\r\n\r\n```sh\r\n$ anywhere --help\r\nUsage:\r\n  anywhere --help // print help information\r\n  anywhere // 8000 as default port, current folder as root\r\n  anywhere 8888 // 8888 as port\r\n  anywhere -p 8989 // 8989 as port\r\n  anywhere -s // don't open browser\r\n  anywhere -h localhost // localhost as hostname\r\n  anywhere -d /home // /home as root\r\n  anywhere -f /index.html  // Enable html5 history,the index is /index.html\r\n  anywhere --proxy http://localhost:7000/api // Support shorthand URL, webpack.config.js or customize config file\r\n```\r\n\r\n#### Proxy argvs\r\n\r\n**Shorthand URL**\r\n```\r\nanywhere --proxy http://localhost:7000/api\r\n                 \\___________________/\\___/\r\n                              |         |\r\n                           target    context\r\n```\r\nMore about the [shorthand configuration](https://github.com/chimurai/http-proxy-middleware#shorthand).\r\n\r\n**Webpack conofig**\r\n```javascript\r\n// webpack.conofig.js\r\nmodule.exports = {\r\n  devServer: {\r\n    proxy: {\r\n      '/api': {\r\n        target: 'http://localhost:7000',\r\n        changeOrigin: true\r\n      }\r\n    }\r\n  }\r\n}\r\n```\r\n\r\n**Customize config**\r\n```javascript\r\n// proxy.config.js\r\nmodule.exports = {\r\n  '/api': {\r\n    target: 'http://localhost:7000',\r\n    changeOrigin: true\r\n  }\r\n}\r\n```\r\nMore proxy [http-proxy-middleware](https://github.com/chimurai/http-proxy-middleware#context-matching) help.\r\n\r\n## Visit\r\n\r\n```\r\nhttp://localhost:8000\r\n```\r\nAutomatically open default browser. 执行命令后，默认浏览器将为您自动打开主页。\r\n\r\n## License\r\nThe MIT license.\r\n",
+  "readmeFilename": "README.md",
   "repository": {
     "type": "git",
     "url": "git://github.com/JacksonTian/anywhere.git"
   },
-  "bugs": {
-    "url": "https://github.com/JacksonTian/anywhere/issues"
-  },
-  "homepage": "https://github.com/JacksonTian/anywhere",
-  "files": ["bin", "keys"]
+  "version": "1.5.0"
 }

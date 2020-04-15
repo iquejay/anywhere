@@ -5,7 +5,12 @@ var fs = require('fs');
 var path = require('path');
 var http = require('http');
 var https = require('https');
-const { URL } = require('url');
+const { URL, parse } = require('url');
+
+var send = require('send');
+var chokidar = require('chokidar');
+var es = require("event-stream");
+var WebSocket = require('faye-websocket');
 
 var connect = require('connect');
 var serveStatic = require('serve-static');
@@ -50,6 +55,8 @@ if (argv.help) {
   console.log("  anywhere -l // print log");
   console.log("  anywhere -f // Enable history fallback");
   console.log("  anywhere --proxy http://localhost:7000/api // Support shorthand URL, webpack.config.js or customize config file");
+  console.log("  anywhere --watch  // watch file changes");
+  console.log("  anywhere -o index.html  // open file after server started");
   process.exit(0);
 }
 
@@ -106,7 +113,74 @@ if (argv.fallback !== undefined) {
     index: argv.fallback || '/index.html'
   }));
 }
-app.use(serveStatic(argv.dir, { 'index': ['index.html'] }));
+var INJECTED_CODE = fs.readFileSync(path.join(__dirname, "injected.html"), "utf8");
+var staticServer = function (root) {
+	var isFile = false;
+	try { // For supporting mounting files instead of just directories
+		isFile = fs.statSync(root).isFile();
+	} catch (e) {
+		if (e.code !== "ENOENT") throw e;
+	}
+	return function(req, res, next) {
+		if (req.method !== "GET" && req.method !== "HEAD") return next();
+		var reqpath = isFile ? "" : parse(req.url).pathname;
+		var hasNoOrigin = !req.headers.origin;
+		var injectCandidates = [ new RegExp("</body>", "i"), new RegExp("</svg>"), new RegExp("</head>", "i")];
+		var injectTag = null;
+
+		function directory() {
+			var pathname = parse(req.originalUrl).pathname;
+			res.statusCode = 301;
+			res.setHeader('Location', pathname + '/');
+			res.end('Redirecting to ' + escape(pathname) + '/');
+		}
+
+		function file(filepath /*, stat*/) {
+			var x = path.extname(filepath).toLocaleLowerCase(), match,
+          possibleExtensions = [ "", ".html", ".htm", ".xhtml", ".php", ".svg" ];
+			if (hasNoOrigin && (possibleExtensions.indexOf(x) > -1)) {
+				// TODO: Sync file read here is not nice, but we need to determine if the html should be injected or not
+				var contents = fs.readFileSync(filepath, "utf8");
+				for (var i = 0; i < injectCandidates.length; ++i) {
+					match = injectCandidates[i].exec(contents);
+					if (match) {
+						injectTag = match[0];
+						break;
+					}
+				}
+				if (injectTag === null) {
+					console.warn("Failed to inject refresh script!",
+						"Couldn't find any of the tags ", injectCandidates, "from", filepath);
+				}
+      }
+		}
+
+		function error(err) {
+			if (err.status === 404) return next();
+			next(err);
+		}
+
+		function inject(stream) {
+			if (injectTag) {
+				// We need to modify the length given to browser
+				var len = INJECTED_CODE.length + res.getHeader('Content-Length');
+				res.setHeader('Content-Length', len);
+				var originalPipe = stream.pipe;
+				stream.pipe = function(resp) {
+					originalPipe.call(stream, es.replace(new RegExp(injectTag, "i"), INJECTED_CODE + injectTag)).pipe(resp);
+				};
+			}
+    }
+		send(req, reqpath, { root: root })
+			.on('error', error)
+			.on('directory', directory)
+			.on('file', file)
+			.on('stream', inject)
+			.pipe(res);
+	};
+}
+app.use(staticServer(argv.dir))
+// app.use(serveStatic(argv.dir, { 'index': ['index.html'] }));
 app.use(serveIndex(argv.dir, { 'icons': true }));
 
 // anywhere --proxy webpack.config.js
@@ -146,23 +220,116 @@ var secure = port + 1;
 
 var hostname = argv.hostname || getIPAddress();
 
-http.createServer(app).listen(port, function () {
+var server = http.createServer(app).listen(port, function () {
   // 忽略80端口
   port = (port != 80 ? ':' + port : '');
   var url = "http://" + hostname + port + '/' + (argv.open || '');
   console.log("Running at " + url);
+  if (argv.watch) {
+    enableWatch();
+  }
   if (!argv.silent) {
     openURL(url);
   }
+}).addListener('error', function(e) {
+	if (e.code === 'EADDRINUSE') {
+    port = (port != 80 ? ':' + port : '');
+		var serveURL = "http://" + hostname + port  + '/';
+		console.error('%s is already in use. Trying another port.', serveURL);
+	} else {
+		console.error(e.toString());
+		shutdown();
+	}
 });
-
+var shutdown = function () {
+  if (watcher) {
+		watcher.close();
+  }
+  if (server) {
+    server.close();
+  }
+  if (httpsServer) {
+    httpsServer.close();
+  }
+}
 var options = {
   key: fs.readFileSync(path.join(__dirname, '../keys', 'key.pem')),
   cert: fs.readFileSync(path.join(__dirname, '../keys', 'cert.pem'))
 };
 
-https.createServer(options, app).listen(secure, function () {
+var httpsServer = https.createServer(options, app).listen(secure, function () {
   secure = (secure != 80 ? ':' + secure : '');
-  var url = "https://" + hostname + secure + '/';
+  var url = "https://" + hostname + secure + '/' + (argv.open || '');
   console.log("Also running at " + url);
 });
+var watcher;
+// WebSocket
+function enableWatch () {
+  var clients = [];
+  server.addListener('upgrade', function(request, socket, head) {
+    var ws = new WebSocket(request, socket, head);
+    ws.onopen = function() { ws.send('connected'); };
+    var wait = 100;
+    if (wait > 0) {
+      (function() {
+        var wssend = ws.send;
+        var waitTimeout;
+        ws.send = function() {
+          var args = arguments;
+          if (waitTimeout) clearTimeout(waitTimeout);
+          waitTimeout = setTimeout(function(){
+            wssend.apply(ws, args);
+          }, wait);
+        };
+      })();
+    }
+
+    ws.onclose = function() {
+      clients = clients.filter(function (x) {
+        return x !== ws;
+      });
+    };
+
+    clients.push(ws);
+  });
+
+  var ignored = [
+    function(testPath) { // Always ignore dotfiles (important e.g. because editor hidden temp files)
+      return testPath !== "." && /(^[.#]|(?:__|~)$)/.test(path.basename(testPath));
+    }
+  ];
+  if (argv.ignore) {
+    ignored = ignored.concat(argv.ignore);
+  }
+  if (argv.ignorePattern) {
+    ignored.push(argv.ignorePattern);
+  }
+  // Setup file watcher
+  var watchPaths = [argv.dir];
+  watcher = chokidar.watch(watchPaths, {
+    ignored: ignored,
+    ignoreInitial: true
+  });
+  function handleChange(changePath) {
+    var cssChange = path.extname(changePath) === ".css";
+    if (cssChange)
+      console.log("CSS change detected", changePath);
+    else console.log("Change detected", changePath);
+    clients.forEach(function (ws) {
+      if (ws)
+        ws.send(cssChange ? 'refreshcss' : 'reload');
+    });
+  }
+  watcher
+    .on("change", handleChange)
+    .on("add", handleChange)
+    .on("unlink", handleChange)
+    .on("addDir", handleChange)
+    .on("unlinkDir", handleChange)
+    .on("ready", function () {
+      console.log("Ready for changes");
+    })
+    .on("error", function (err) {
+      console.log("ERROR:", err);
+    });
+}
