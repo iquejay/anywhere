@@ -27,7 +27,8 @@ var argv = require("minimist")(process.argv.slice(2), {
     'dir': 'd',
     'proxy': 'x',
     'log': 'l',
-    'fallback': 'f'
+    'fallback': 'f',
+    'open': 'o'
   },
   string: ['port', 'hostname', 'fallback'],
   boolean: ['silent', 'log'],
@@ -148,7 +149,7 @@ var hostname = argv.hostname || getIPAddress();
 http.createServer(app).listen(port, function () {
   // 忽略80端口
   port = (port != 80 ? ':' + port : '');
-  var url = "http://" + hostname + port + '/';
+  var url = "http://" + hostname + port + '/' + (argv.open || '');
   console.log("Running at " + url);
   if (!argv.silent) {
     openURL(url);
