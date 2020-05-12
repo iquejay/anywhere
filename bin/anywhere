@@ -113,8 +113,8 @@ if (argv.fallback !== undefined) {
     index: argv.fallback || '/index.html'
   }));
 }
-var INJECTED_CODE = fs.readFileSync(path.join(__dirname, "injected.html"), "utf8");
 var staticServer = function (root) {
+  var INJECTED_CODE = fs.readFileSync(path.join(__dirname, "injected.html"), "utf8");
 	var isFile = false;
 	try { // For supporting mounting files instead of just directories
 		isFile = fs.statSync(root).isFile();
@@ -179,8 +179,11 @@ var staticServer = function (root) {
 			.pipe(res);
 	};
 }
-app.use(staticServer(argv.dir))
-// app.use(serveStatic(argv.dir, { 'index': ['index.html'] }));
+if (argv.watch) {
+  app.use(staticServer(argv.dir))
+} else {
+  app.use(serveStatic(argv.dir, { 'index': ['index.html'] }));
+}
 app.use(serveIndex(argv.dir, { 'icons': true }));
 
 // anywhere --proxy webpack.config.js
